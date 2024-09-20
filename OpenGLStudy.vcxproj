@@ -141,11 +141,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Demos\DemoBase.cpp" />
+    <ClCompile Include="src\Demos\DemoHelloTriangle.cpp" />
     <ClCompile Include="src\glad\glad.c" />
     <ClCompile Include="src\OpenGLStudy.cpp" />
     <ClCompile Include="src\OpenGL\OpenGL.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="DemoHelloTriangle.h" />
+    <ClInclude Include="src\Demos\DemoBase.h" />
+    <ClInclude Include="src\Demos\DemoHelloTriangle.h" />
     <ClInclude Include="src\OpenGL\OpenGL.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

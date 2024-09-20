@@ -1,16 +1,14 @@
 #include "OpenGL.h"
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
-#include <iostream>
 
-OpenGL::OpenGL() : _appWindow(NULL), _isRunning(false)
+
+OpenGL::OpenGL() : m_appWindow(NULL), m_isInitialized(false), m_isRunning(false)
 {
     // _appWindow is instantiated in glfwCreateWindow()
 }
 
 OpenGL::~OpenGL()
 {
-    delete _appWindow;
+    delete m_appWindow;
 }
 
 bool OpenGL::Initialize()
@@ -18,8 +16,8 @@ bool OpenGL::Initialize()
     bool initialized = true;
     InitGLFW();
 
-    _appWindow = CreateGLFWWindow();
-    initialized &= _appWindow != NULL;
+    m_appWindow = CreateGLFWWindow();
+    initialized &= m_appWindow != NULL;
     initialized &= CheckGLADInit();
 
     if (initialized)
@@ -27,7 +25,16 @@ bool OpenGL::Initialize()
         RegisterCallbacks();
     }
 
-    return initialized;
+    m_isInitialized = initialized;
+
+    return m_isInitialized;
+}
+
+void OpenGL::Release()
+{
+    m_isRunning = false;
+    m_isInitialized = false;
+    glfwTerminate();
 }
 
 void OpenGL::InitGLFW()
@@ -45,7 +52,7 @@ GLFWwindow* OpenGL::CreateGLFWWindow()
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
-        glfwTerminate();
+        Release();
         return NULL;
     }
 
@@ -68,39 +75,12 @@ bool OpenGL::CheckGLADInit()
 
 void OpenGL::RegisterCallbacks()
 {
-    glfwSetFramebufferSizeCallback(_appWindow, FramebufferSizeCallback);
+    glfwSetFramebufferSizeCallback(m_appWindow, FramebufferSizeCallback);
 }
 
 void OpenGL::Start()
 {
-    _isRunning = true;
-    Update();
-}
-
-void OpenGL::Update()
-{
-    while (!glfwWindowShouldClose(_appWindow))
-    {
-        ProcessInput();
-
-        // rendering commands
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        glfwSwapBuffers(_appWindow);
-        glfwPollEvents();
-    }
-
-    _isRunning = false;
-    glfwTerminate();
-}
-
-void OpenGL::ProcessInput()
-{
-    if (glfwGetKey(_appWindow, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-    {
-        glfwSetWindowShouldClose(_appWindow, true);
-    }
+    m_isRunning = true;
 }
 
 void OpenGL::SetViewport(int x, int y, int w, int h)

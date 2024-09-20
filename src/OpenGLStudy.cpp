@@ -1,13 +1,12 @@
+#include "Demos/DemoHelloTriangle.h";
 #include "OpenGL/OpenGL.h"
 
 int main()
 {
-    OpenGL* openGL = new OpenGL();
-    bool isInitialized = openGL->Initialize();
-    if (isInitialized)
+    DemoHelloTriangle* demoHelloTriangle = new DemoHelloTriangle();
+    if(demoHelloTriangle->Init())
     {
-        openGL->SetViewport(0, 0, 800, 600);
-        openGL->Start();
+        demoHelloTriangle->Start();
     }
 
     return 0;

@@ -19,6 +19,9 @@
     <Filter Include="Source Files\OpenGL">
       <UniqueIdentifier>{391b77f2-f00d-4da6-a0f6-4e28024a16a1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Demos">
+      <UniqueIdentifier>{e0afe70f-0f0e-4437-9462-672d1c8e631b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\OpenGLStudy.cpp">
@@ -30,10 +33,25 @@
     <ClCompile Include="src\OpenGL\OpenGL.cpp">
       <Filter>Source Files\OpenGL</Filter>
     </ClCompile>
+    <ClCompile Include="src\Demos\DemoHelloTriangle.cpp">
+      <Filter>Source Files\Demos</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Demos\DemoBase.cpp">
+      <Filter>Source Files\Demos</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\OpenGL\OpenGL.h">
       <Filter>Source Files\OpenGL</Filter>
+    </ClInclude>
+    <ClInclude Include="DemoHelloTriangle.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Demos\DemoHelloTriangle.h">
+      <Filter>Source Files\Demos</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Demos\DemoBase.h">
+      <Filter>Source Files\Demos</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

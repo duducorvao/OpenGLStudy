@@ -1,32 +1,30 @@
 #pragma once
 
-#include <memory>
-
-struct GLFWwindow;
+//struct GLFWwindow;
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+#include <iostream>
 
 class OpenGL
 {
 
-private:
-	GLFWwindow* _appWindow;
-	bool _isRunning;
-
 public:
+	GLFWwindow* m_appWindow;
+	bool m_isInitialized;
+	bool m_isRunning;
+
 	OpenGL();
 	~OpenGL();
 
 	// Inits
 
 	bool Initialize();
+	void Release();
 	void InitGLFW();
 	GLFWwindow* CreateGLFWWindow();
 	bool CheckGLADInit();
 	void RegisterCallbacks();
 	void Start();
-
-	// Updates
-	void Update();
-	void ProcessInput();
 
 	// Configs
 
