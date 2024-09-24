@@ -2,9 +2,125 @@
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <string.h>
 
 // Window dimensions
 const GLint WIDTH = 800, HEIGHT = 600;
+
+GLuint VAO, VBO, shader;
+
+// Vertex Shader
+static const char* vShader = "                                \n\
+#version 330                                                  \n\
+                                                              \n\
+layout (location = 0) in vec3 pos;                            \n\
+void main()                                                   \n\
+{                                                             \n\
+    gl_Position = vec4(0.4 * pos.x, 0.4 * pos.y, pos.z, 1.0); \n\
+}";
+
+// Fragment Shader
+static const char* fShader = "                    \n\
+#version 330                                      \n\
+                                                  \n\
+out vec4 color;                                   \n\
+void main()                                       \n\
+{                                                 \n\
+    color = vec4(1.0f, 0.0f, 0.0f, 1.0);          \n\
+}";
+
+void CreateTriangle()
+{
+    // A triangle
+    GLfloat vertices[] =
+    {
+        -1.0f, -1.0f, 0.0f, // Vertice 1
+        1.0f, -1.0f, 0.0f,  // Vertice 2
+        0.0f, 1.0f, 0.0f    // Vertice 3
+    };
+
+    glGenVertexArrays(1, &VAO); // Create one Vertex Array Object and store its ID in var VAO
+    glBindVertexArray(VAO); // Bind this VAO to the current OpenGL's context
+
+        glGenBuffers(1, &VBO); // Create one Vertex Buffer Object and store its ID in var VBO
+        glBindBuffer(GL_ARRAY_BUFFER, VBO); // Bind this VBO to the context (which will automatically bind it to the bound VAO)
+            glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW); // Fill the VBO with the vertices data
+
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0); // Describe how this VBO's attributes are organized
+            glEnableVertexAttribArray(0); // Enable the attribute at index 0 (which in this case is position)
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0); // Unbind the VBO
+
+    glBindVertexArray(0); // Unbind the VAO
+}
+
+void AddShader(GLuint program, const char* shaderCode, GLenum shaderType)
+{
+    GLuint theShader = glCreateShader(shaderType); // Create an empty shader and stores its ID in the var theShader
+
+    const GLchar* theCode[1];
+    theCode[0] = shaderCode; // Stores the hardcoded shaderCode (const char*) here
+
+    GLint codeLength[1];
+    codeLength[0] = strlen(shaderCode); // Store the shader code length which will be needed later on
+
+    glShaderSource(theShader, 1, theCode, codeLength); // Specify that "theCode" will be the "theShader" code to be used 
+    glCompileShader(theShader); // Compiles the shader
+
+    // Checking for any shader compilation error
+    GLint result = 0;
+    GLchar eLog[1024] = { 0 };
+
+    glGetShaderiv(theShader, GL_COMPILE_STATUS, &result);
+    if (!result)
+    {
+        glGetShaderInfoLog(theShader, 1024, NULL, eLog);
+        printf("Error compiling the %d shader: %s \n", shaderType, eLog);
+        return;
+    }
+
+    glAttachShader(program, theShader); // Attach the compiled shader to the program
+}
+
+void CompileShaders()
+{
+    shader = glCreateProgram(); // Creates an empty shader program and stores its ID in the var shader (GLuint)
+
+    if (!shader)
+    {
+        printf("Error creating shader program! \n");
+        return;
+    }
+
+    AddShader(shader, vShader, GL_VERTEX_SHADER); // Creates, compile and attach the VERTEX shader to the shader program
+    AddShader(shader, fShader, GL_FRAGMENT_SHADER); // Creates, compile and attach the FRAGMENT shader to the shader program
+
+    glLinkProgram(shader); // Link the shader program, which will create the "executables" in the GPU
+
+    // Checking for any shader compilation error
+    GLint result = 0;
+    GLchar eLog[1024] = { 0 };
+
+    glGetProgramiv(shader, GL_LINK_STATUS, &result);
+    if (!result)
+    {
+        glGetProgramInfoLog(shader, 1024, NULL, eLog);
+        printf("Error linking program: %s \n", eLog);
+        return;
+    }
+
+    glValidateProgram(shader); // Validates the shader program
+
+    // Checking for any shader validation error
+    glGetProgramiv(shader, GL_VALIDATE_STATUS, &result);
+    if (!result)
+    {
+        glGetProgramInfoLog(shader, 1024, NULL, eLog);
+        printf("Error validating program: %s \n", eLog);
+        return;
+    }
+
+}
 
 int main()
 {
@@ -54,6 +170,9 @@ int main()
     // Setup viewport size
     glViewport(0, 0, bufferWidth, bufferHeight);
 
+    CreateTriangle();
+    CompileShaders();
+
     // Loop until window closed
     while (!glfwWindowShouldClose(mainWindow))
     {
@@ -61,8 +180,19 @@ int main()
         glfwPollEvents();
 
         // Clear window
-        glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
+
+        glUseProgram(shader); // Bind our shader program
+            
+            glBindVertexArray(VAO); // Bind the VAO we want OpenGL to render
+            
+                // Tells OpenGL that we're drawing triangles, which 0 is the first vertex's index and it has 3 vertices
+                glDrawArrays(GL_TRIANGLES, 0, 3); 
+
+            glBindVertexArray(0); // Unbind the VAO
+
+        glUseProgram(0); // Unbind the shader
 
         glfwSwapBuffers(mainWindow);
     }
