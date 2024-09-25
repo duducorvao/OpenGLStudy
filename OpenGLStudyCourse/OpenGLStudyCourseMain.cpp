@@ -11,12 +11,14 @@
 
 // Window dimensions
 const GLint WIDTH = 800, HEIGHT = 600;
+const float toRadians = 3.14159265f / 180.0f;
 
 GLuint VAO, VBO, shader, uniformModel ;
 
 float triOffset = 0.0f;
 float triMaxOffset = 0.7f;
 float triIncrement = 0.005f;
+float currAngle = 0.0f;
 
 // Vertex Shader
 static const char* vShader = "                                        \n\
@@ -28,7 +30,7 @@ uniform mat4 model;                                                   \n\
                                                                       \n\
 void main()                                                           \n\
 {                                                                     \n\
-    gl_Position = model * vec4(0.4 * pos.x, 0.4 * pos.y, pos.z, 1.0); \n\
+    gl_Position = model * vec4(pos.x * 0.4f, pos.y *0.4f, pos.z, 1.0); \n\
 }";
 
 // Fragment Shader
@@ -197,7 +199,13 @@ int main()
         if (abs(triOffset) >= triMaxOffset)
         {
             triIncrement *= -1.0f;
-        }      
+        }
+
+        currAngle += 0.1f;
+        if (currAngle >= 360)
+        {
+            currAngle -= 360;
+        }
 
         // Clear window
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -207,6 +215,7 @@ int main()
         
             glm::mat4 model = glm::mat4(1.0f);
             model = glm::translate(model, glm::vec3(triOffset, 0.0f, 0.0f));
+            model = glm::rotate(model, currAngle * toRadians, glm::vec3(0.0f, 0.0f, 1.0f));
 
             glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model)); // Updates the uniform with id "uniformModel" with the value "model"
 
