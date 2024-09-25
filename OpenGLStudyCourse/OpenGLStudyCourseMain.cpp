@@ -1,22 +1,30 @@
 #include <stdio.h>
+#include <string.h>
+#include <cmath>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#include <string.h>
 
 // Window dimensions
 const GLint WIDTH = 800, HEIGHT = 600;
 
-GLuint VAO, VBO, shader;
+GLuint VAO, VBO, shader, uniformXMove;
+
+float triOffset = 0.0f;
+float triMaxOffset = 0.7f;
+float triIncrement = 0.005f;
 
 // Vertex Shader
-static const char* vShader = "                                \n\
-#version 330                                                  \n\
-                                                              \n\
-layout (location = 0) in vec3 pos;                            \n\
-void main()                                                   \n\
-{                                                             \n\
-    gl_Position = vec4(0.4 * pos.x, 0.4 * pos.y, pos.z, 1.0); \n\
+static const char* vShader = "                                        \n\
+#version 330                                                          \n\
+                                                                      \n\
+layout (location = 0) in vec3 pos;                                    \n\
+                                                                      \n\
+uniform float xMove;                                                  \n\
+                                                                      \n\
+void main()                                                           \n\
+{                                                                     \n\
+    gl_Position = vec4(0.4 * pos.x + xMove, 0.4 * pos.y, pos.z, 1.0); \n\
 }";
 
 // Fragment Shader
@@ -120,6 +128,7 @@ void CompileShaders()
         return;
     }
 
+    uniformXMove = glGetUniformLocation(shader, "xMove");
 }
 
 int main()
@@ -179,12 +188,21 @@ int main()
         // Get and handle user input events
         glfwPollEvents();
 
+        triOffset += triIncrement;
+
+        if (abs(triOffset) >= triMaxOffset)
+        {
+            triIncrement *= -1.0f;
+        }      
+
         // Clear window
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
         glUseProgram(shader); // Bind our shader program
-            
+        
+            glUniform1f(uniformXMove, triOffset); // Updates the uniform with id "uniformXMove" with the value "triOffset"
+
             glBindVertexArray(VAO); // Bind the VAO we want OpenGL to render
             
                 // Tells OpenGL that we're drawing triangles, which 0 is the first vertex's index and it has 3 vertices
