@@ -18,7 +18,13 @@ GLuint VAO, VBO, shader, uniformModel ;
 float triOffset = 0.0f;
 float triMaxOffset = 0.7f;
 float triIncrement = 0.005f;
+
 float currAngle = 0.0f;
+
+float currSize = 0.4f;
+float currIncrement = 0.001f;
+float maxSize = 0.8f;
+float minSize = 0.1f;
 
 // Vertex Shader
 static const char* vShader = "                                        \n\
@@ -26,21 +32,26 @@ static const char* vShader = "                                        \n\
                                                                       \n\
 layout (location = 0) in vec3 pos;                                    \n\
                                                                       \n\
+out vec4 vCol;                                                        \n\
+                                                                      \n\
 uniform mat4 model;                                                   \n\
                                                                       \n\
 void main()                                                           \n\
 {                                                                     \n\
-    gl_Position = model * vec4(pos.x * 0.4f, pos.y *0.4f, pos.z, 1.0); \n\
+    gl_Position = model * vec4(pos, 1.0);                             \n\
+    vCol = vec4(clamp(pos, 0.0f, 1.0f), 1.0f);                        \n\
 }";
 
 // Fragment Shader
 static const char* fShader = "                    \n\
 #version 330                                      \n\
                                                   \n\
+in vec4 vCol;                                     \n\
+                                                  \n\
 out vec4 color;                                   \n\
 void main()                                       \n\
 {                                                 \n\
-    color = vec4(1.0f, 0.0f, 0.0f, 1.0);          \n\
+    color = vCol;                                 \n\
 }";
 
 void CreateTriangle()
@@ -207,6 +218,13 @@ int main()
             currAngle -= 360;
         }
 
+        currSize += currIncrement;
+
+        if (currSize >= maxSize || currSize <= minSize)
+        {
+            currIncrement *= -1.0f;
+        }
+
         // Clear window
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -214,10 +232,12 @@ int main()
         glUseProgram(shader); // Bind our shader program
         
             glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, glm::vec3(triOffset, 0.0f, 0.0f));
-            model = glm::rotate(model, currAngle * toRadians, glm::vec3(0.0f, 0.0f, 1.0f));
+            //model = glm::translate(model, glm::vec3(triOffset, 0.0f, 0.0f));
+            //model = glm::rotate(model, currAngle * toRadians, glm::vec3(0.0f, 0.0f, 1.0f));
+            model = glm::scale(model, glm::vec3(0.4f, 0.4f, 1.0f));
 
-            glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model)); // Updates the uniform with id "uniformModel" with the value "model"
+            // Updates the uniform with id "uniformModel" with the value "model"
+            glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model)); 
 
             glBindVertexArray(VAO); // Bind the VAO we want OpenGL to render
             
