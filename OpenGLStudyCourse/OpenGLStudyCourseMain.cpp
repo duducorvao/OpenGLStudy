@@ -13,7 +13,7 @@
 const GLint WIDTH = 800, HEIGHT = 600;
 const float toRadians = 3.14159265f / 180.0f;
 
-GLuint VAO, VBO, shader, uniformModel ;
+GLuint VAO, VBO, IBO, shader, uniformModel ;
 
 float triOffset = 0.0f;
 float triMaxOffset = 0.7f;
@@ -56,16 +56,28 @@ void main()                                       \n\
 
 void CreateTriangle()
 {
+    unsigned int indices[] = {
+        0, 3, 1,
+        1, 3, 2,
+        2, 3, 0,
+        0, 1, 2
+    };
+
     // A triangle
     GLfloat vertices[] =
     {
-        -1.0f, -1.0f, 0.0f, // Vertice 1
-        1.0f, -1.0f, 0.0f,  // Vertice 2
-        0.0f, 1.0f, 0.0f    // Vertice 3
+       -1.0f, -1.0f, 0.0f,  // Vertex 0
+        0.0f, -1.0f, 1.0f,  // Vertex 1
+        1.0f, -1.0f, 0.0f,  // Vertex 2
+        0.0f,  1.0f, 0.0f   // Vertex 3
     };
 
     glGenVertexArrays(1, &VAO); // Create one Vertex Array Object and store its ID in var VAO
     glBindVertexArray(VAO); // Bind this VAO to the current OpenGL's context
+
+        glGenBuffers(1, &IBO); // Create one Index Buffer Object and store its ID in var IBO
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO); // Bind this IBO as a GL_ELEMENT_ARRAY_BUFFER
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW); // Fill the IBO with the indexes data
 
         glGenBuffers(1, &VBO); // Create one Vertex Buffer Object and store its ID in var VBO
         glBindBuffer(GL_ARRAY_BUFFER, VBO); // Bind this VBO to the context (which will automatically bind it to the bound VAO)
@@ -77,6 +89,7 @@ void CreateTriangle()
         glBindBuffer(GL_ARRAY_BUFFER, 0); // Unbind the VBO
 
     glBindVertexArray(0); // Unbind the VAO
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); // Unbinding IBO after VAO
 }
 
 void AddShader(GLuint program, const char* shaderCode, GLenum shaderType)
@@ -193,6 +206,8 @@ int main()
         return 1;
     }
 
+    glEnable(GL_DEPTH_TEST);
+
     // Setup viewport size
     glViewport(0, 0, bufferWidth, bufferHeight);
 
@@ -227,13 +242,13 @@ int main()
 
         // Clear window
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUseProgram(shader); // Bind our shader program
         
             glm::mat4 model = glm::mat4(1.0f);
             //model = glm::translate(model, glm::vec3(triOffset, 0.0f, 0.0f));
-            //model = glm::rotate(model, currAngle * toRadians, glm::vec3(0.0f, 0.0f, 1.0f));
+            model = glm::rotate(model, currAngle * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
             model = glm::scale(model, glm::vec3(0.4f, 0.4f, 1.0f));
 
             // Updates the uniform with id "uniformModel" with the value "model"
@@ -241,10 +256,11 @@ int main()
 
             glBindVertexArray(VAO); // Bind the VAO we want OpenGL to render
             
-                // Tells OpenGL that we're drawing triangles, which 0 is the first vertex's index and it has 3 vertices
-                glDrawArrays(GL_TRIANGLES, 0, 3); 
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO); // Bind IBO
+                glDrawElements(GL_TRIANGLES, 12, GL_UNSIGNED_INT, 0);
 
             glBindVertexArray(0); // Unbind the VAO
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); // Unbind IBO
 
         glUseProgram(0); // Unbind the shader
 
