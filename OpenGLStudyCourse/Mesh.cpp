@@ -22,8 +22,15 @@ void Mesh::CreateMesh(GLfloat* vertices, unsigned int* indices, unsigned int num
         glBindBuffer(GL_ARRAY_BUFFER, VBO); // Bind this VBO to the context (which will automatically bind it to the bound VAO)
         glBufferData(GL_ARRAY_BUFFER, sizeof(vertices[0]) * numOfVertices, vertices, GL_STATIC_DRAW); // Fill the VBO with the vertices data
 
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0); // Describe how this VBO's attributes are organized
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertices[0]) * 8, 0); // Describe how this VBO's vertices attributes are organized
         glEnableVertexAttribArray(0); // Enable the attribute at index 0 (which in this case is position)
+
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(vertices[0]) * 8, (void*)(sizeof(vertices[0]) * 3)); // Describe how this VBO's UV attributes are organized
+        glEnableVertexAttribArray(1);
+
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(vertices[0]) * 8, (void*)(sizeof(vertices[0]) * 5)); // Describe how this VBO's Normal attributes are organized
+        glEnableVertexAttribArray(2);
+
 
         glBindBuffer(GL_ARRAY_BUFFER, 0); // Unbind the VBO
 

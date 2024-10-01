@@ -1,3 +1,5 @@
+#define STB_IMAGE_IMPLEMENTATION
+
 #include <stdio.h>
 #include <string.h>
 #include <cmath>
@@ -14,6 +16,8 @@
 #include "Mesh.h"
 #include "Shader.h"
 #include "Camera.h"
+#include "Texture.h"
+#include "Light.h"
 
 #define ArraySize(x) sizeof(x) / sizeof(x[0])
 
@@ -24,6 +28,11 @@ std::vector<Mesh*> meshList;
 std::vector<Shader*> shaderList;
 Camera camera;
 
+Texture brickTexture;
+Texture dirtTexture;
+
+Light mainLight;
+
 GLfloat deltaTime = 0.0f;
 GLfloat lastTime = 0.0f;
 
@@ -32,6 +41,60 @@ static const char* vShader = "Shaders/shader.vert";
 
 // Fragment Shader
 static const char* fShader = "Shaders/shader.frag";
+
+void CalcAverageNormals(unsigned int* indices, unsigned int indiceCount,
+    GLfloat* vertices, unsigned int verticesCount,
+    unsigned int vLength, unsigned int normalOffset)
+{
+
+    for (size_t i = 0; i < indiceCount; i += 3)
+    {
+        unsigned int in0 = indices[i] * vLength;
+        unsigned int in1 = indices[i + 1] * vLength;
+        unsigned int in2 = indices[i + 2] * vLength;
+
+        glm::vec3 v1(
+            vertices[in1] - vertices[in0],
+            vertices[in1 + 1] - vertices[in0 + 1],
+            vertices[in1 + 2] - vertices[in0 + 2]);
+
+        glm::vec3 v2(
+            vertices[in2] - vertices[in0],
+            vertices[in2 + 1] - vertices[in0 + 1],
+            vertices[in2 + 2] - vertices[in0 + 2]);
+
+        glm::vec3 normal = glm::normalize(glm::cross(v1, v2));
+
+        in0 += normalOffset; in1 += normalOffset; in2 += normalOffset;
+
+        vertices[in0] += normal.x;
+        vertices[in0 + 1] += normal.y;
+        vertices[in0 + 2] += normal.z;
+
+        vertices[in1 ] += normal.x;
+        vertices[in1 + 1] += normal.y;
+        vertices[in1 + 2] += normal.z;
+
+        vertices[in2] += normal.x;
+        vertices[in2 + 1] += normal.y;
+        vertices[in2 + 2] += normal.z;
+    }
+
+    // We're doing this because of the "vertices[in0] +=" above. Since we're incrementing (+=)
+    // the previously normalized normals could get "un-normalized". So we normalize "again" in
+    // the loop below.
+    for (size_t i = 0; i < verticesCount / vLength; i++) // Each row of vertices[] array below
+    {
+        unsigned int nOffset = i * vLength + normalOffset;
+
+        glm::vec3 vec(vertices[nOffset], vertices[nOffset + 1], vertices[nOffset + 2]);
+        vec = glm::normalize(vec);
+
+        vertices[nOffset] = vec.x;
+        vertices[nOffset + 1] = vec.y;
+        vertices[nOffset + 2] = vec.z;
+    }
+}
 
 void CreateObjects()
 {
@@ -45,14 +108,17 @@ void CreateObjects()
     // A triangle
     GLfloat vertices[] =
     {
-       -1.0f, -1.0f, 0.0f,  // Vertex 0
-        0.0f, -1.0f, 1.0f,  // Vertex 1
-        1.0f, -1.0f, 0.0f,  // Vertex 2
-        0.0f,  1.0f, 0.0f   // Vertex 3
+     //  X      Y     Z     U     V     NX    NY    NZ
+       -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, -1.0f, 1.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f,
+        1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+        0.0f,  1.0f, 0.0f, 0.5f, 1.0f, 0.0f, 0.0f, 0.0f,
     };
 
+    CalcAverageNormals(indices, ArraySize(indices), vertices, ArraySize(vertices), 8, 5);
+
     Mesh* triangle = new Mesh();
-    triangle->CreateMesh(vertices, indices, ArraySize(indices), ArraySize(vertices));
+    triangle->CreateMesh(vertices, indices, ArraySize(vertices), ArraySize(indices));
     meshList.push_back(triangle);
     meshList.push_back(triangle);
 }
@@ -74,7 +140,18 @@ int main()
 
     camera = Camera(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), 0.0f, -90.0f, 5.0f, 0.1f);
 
-    GLuint uniformProjection = 0, uniformModel = 0, uniformView;
+    brickTexture = Texture("Textures/brick.png");
+    brickTexture.LoadTexture();
+
+    dirtTexture = Texture("Textures/dirt.png");
+    dirtTexture.LoadTexture();
+
+    mainLight = Light(1.0f, 1.0f, 1.0f, 0.2f, 2.0f, -1.0f, -2.0f, 1.0f);
+
+    GLuint uniformProjection = 0, uniformModel = 0,
+        uniformView = 0, uniformAmbientIntensity = 0,
+        uniformAmbientColor = 0, uniformDirection = 0,
+        uniformDiffuseIntensity = 0;
     glm::mat4 projection = glm::perspective(45.0f, mainWindow.GetBufferWidth() / mainWindow.GetBufferHeight(), 0.1f, 100.0f);
 
     // Loop until window closed
@@ -98,6 +175,14 @@ int main()
         uniformModel = shaderList[0]->GetModelLocation();
         uniformProjection = shaderList[0]->GetProjectionLocation();
         uniformView = shaderList[0]->GetViewLocation();
+        uniformAmbientIntensity = shaderList[0]->GetAmbientIntensityLocation();
+        uniformAmbientColor = shaderList[0]->GetAmbientColorLocation();
+        uniformDirection = shaderList[0]->GetDirectionLocation();
+        uniformDiffuseIntensity = shaderList[0]->GetDiffuseIntensityLocation();
+
+        mainLight.UseLight(uniformAmbientIntensity, uniformAmbientColor, 
+            uniformDiffuseIntensity,
+            uniformDirection);
 
         // Updates the uniform with id "uniformProjection" with the value "projection"
         glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projection));
@@ -111,6 +196,7 @@ int main()
         // Updates the uniform with id "uniformModel" with the value "model"
         glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));       
         glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(camera.CalculateViewMatrix()));
+        brickTexture.UseTexture();
         meshList[0]->RenderMesh();
 
         // Triangle 2
@@ -121,6 +207,7 @@ int main()
         // Updates the uniform with id "uniformModel" with the value "model"
         glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
         glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(camera.CalculateViewMatrix()));
+        dirtTexture.UseTexture();
         meshList[1]->RenderMesh();
 
         glUseProgram(0); // Unbind the shader
