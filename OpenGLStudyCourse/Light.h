@@ -8,18 +8,12 @@ class Light
 public:
 	Light();
 	~Light();
-	Light(GLfloat red, GLfloat green, GLfloat blue, GLfloat aIntensity,
-		GLfloat xDirection, GLfloat yDirection, GLfloat zDirection, GLfloat dIntensity);
+	Light(glm::vec3 inColor, GLfloat intensity, GLfloat dIntensity);
+	Light(GLfloat red, GLfloat green, GLfloat blue, GLfloat aIntensity, GLfloat dIntensity);
 
-	void UseLight(GLuint ambientIntensityLocation, GLuint ambientColorLocation,
-		GLuint diffuseIntensityLocation, GLuint directionLocation);
-
-private:
+protected:
 	glm::vec3 color;
 	GLfloat ambientIntensity;
-
-	// Directional Light
-	glm::vec3 direction;
 	GLfloat diffuseIntensity;
 };
 
