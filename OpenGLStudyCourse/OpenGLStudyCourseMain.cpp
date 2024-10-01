@@ -18,6 +18,7 @@
 #include "Camera.h"
 #include "Texture.h"
 #include "Light.h"
+#include "Material.h"
 
 #define ArraySize(x) sizeof(x) / sizeof(x[0])
 
@@ -30,6 +31,9 @@ Camera camera;
 
 Texture brickTexture;
 Texture dirtTexture;
+
+Material shinyMaterial;
+Material dullMaterial;
 
 Light mainLight;
 
@@ -109,9 +113,9 @@ void CreateObjects()
     GLfloat vertices[] =
     {
      //  X      Y     Z     U     V     NX    NY    NZ
-       -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+       -1.0f, -1.0f, -0.6f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
         0.0f, -1.0f, 1.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f,
-        1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+        1.0f, -1.0f, -0.6f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
         0.0f,  1.0f, 0.0f, 0.5f, 1.0f, 0.0f, 0.0f, 0.0f,
     };
 
@@ -132,7 +136,7 @@ void CreateShaders()
 
 int main()
 {
-    mainWindow = GLWindow(800, 600);
+    mainWindow = GLWindow(1366, 768);
     mainWindow.Initialise();
 
     CreateObjects();
@@ -146,12 +150,17 @@ int main()
     dirtTexture = Texture("Textures/dirt.png");
     dirtTexture.LoadTexture();
 
-    mainLight = Light(1.0f, 1.0f, 1.0f, 0.2f, 2.0f, -1.0f, -2.0f, 1.0f);
+    shinyMaterial = Material(1.0f, 32);
+    dullMaterial = Material(0.3f, 4);
+
+    mainLight = Light(1.0f, 1.0f, 1.0f, 0.2f, 2.0f, -1.0f, -2.0f, 0.3f);
 
     GLuint uniformProjection = 0, uniformModel = 0,
         uniformView = 0, uniformAmbientIntensity = 0,
         uniformAmbientColor = 0, uniformDirection = 0,
-        uniformDiffuseIntensity = 0;
+        uniformDiffuseIntensity = 0, uniformEyePosition = 0,
+        uniformSpecularIntensity = 0, uniformShininess = 0;
+
     glm::mat4 projection = glm::perspective(45.0f, mainWindow.GetBufferWidth() / mainWindow.GetBufferHeight(), 0.1f, 100.0f);
 
     // Loop until window closed
@@ -179,6 +188,9 @@ int main()
         uniformAmbientColor = shaderList[0]->GetAmbientColorLocation();
         uniformDirection = shaderList[0]->GetDirectionLocation();
         uniformDiffuseIntensity = shaderList[0]->GetDiffuseIntensityLocation();
+        uniformEyePosition = shaderList[0]->GetEyePositionLocation();
+        uniformSpecularIntensity = shaderList[0]->GetSpecularIntensityLocation();
+        uniformShininess = shaderList[0]->GetShininessLocation();
 
         mainLight.UseLight(uniformAmbientIntensity, uniformAmbientColor, 
             uniformDiffuseIntensity,
@@ -186,28 +198,30 @@ int main()
 
         // Updates the uniform with id "uniformProjection" with the value "projection"
         glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projection));
+        glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(camera.CalculateViewMatrix()));
+        glUniform3f(uniformEyePosition, camera.GetCameraPosition().x, camera.GetCameraPosition().y, camera.GetCameraPosition().z);
 
         // Triangle 1
         glm::mat4 model = glm::mat4(1.0f);
 
-        model = glm::translate(model, glm::vec3(0.0f, 0.8f, -2.5f));
-        model = glm::scale(model, glm::vec3(0.4f, 0.4f, 1.0f));
+        model = glm::translate(model, glm::vec3(0.0f, 1.0f, -2.5f));
+        //model = glm::scale(model, glm::vec3(0.4f, 0.4f, 1.0f));
 
         // Updates the uniform with id "uniformModel" with the value "model"
-        glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));       
-        glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(camera.CalculateViewMatrix()));
+        glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));     
         brickTexture.UseTexture();
+        shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
         meshList[0]->RenderMesh();
 
         // Triangle 2
         model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f, -0.2f, -2.5f));
-        model = glm::scale(model, glm::vec3(0.4f, 0.4f, 1.0f));
+        model = glm::translate(model, glm::vec3(0.0f, -1.0f, -2.5f));
+        //model = glm::scale(model, glm::vec3(0.4f, 0.4f, 1.0f));
 
         // Updates the uniform with id "uniformModel" with the value "model"
         glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-        glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(camera.CalculateViewMatrix()));
         dirtTexture.UseTexture();
+        dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
         meshList[1]->RenderMesh();
 
         glUseProgram(0); // Unbind the shader

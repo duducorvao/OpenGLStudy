@@ -93,6 +93,11 @@ glm::mat4 Camera::CalculateViewMatrix()
 	return glm::lookAt(position, position + forward, up);
 }
 
+glm::vec3 Camera::GetCameraPosition()
+{
+	return position;
+}
+
 void Camera::Update()
 {
 	forward.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
