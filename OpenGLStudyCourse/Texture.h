@@ -9,7 +9,8 @@ public:
 	Texture();
 	Texture(const char* fileLoc);
 
-	void LoadTexture();
+	bool LoadTexture(int glewTextureFormat); // GL_RGB, GL_RGBA
+	bool LoadTextureA();
 	void UseTexture();
 	void ClearTexture();
 

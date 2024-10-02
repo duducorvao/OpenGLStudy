@@ -24,6 +24,7 @@
 #include "DirectionalLight.h"
 #include "PointLight.h"
 #include "SpotLight.h"
+#include "Model.h"
 
 #define ArraySize(x) sizeof(x) / sizeof(x[0])
 
@@ -41,6 +42,8 @@ Texture plainTexture;
 Material shinyMaterial;
 Material dullMaterial;
 
+Model house;
+
 DirectionalLight mainLight;
 PointLight pointLights[MAX_POINT_LIGHTS];
 SpotLight spotLights[MAX_SPOT_LIGHTS];
@@ -49,10 +52,10 @@ GLfloat deltaTime = 0.0f;
 GLfloat lastTime = 0.0f;
 
 // Vertex Shader
-static const char* vShader = "Shaders/shader.vert";
+static const char* vShader = "Shaders/phong.vert";
 
 // Fragment Shader
-static const char* fShader = "Shaders/shader.frag";
+static const char* fShader = "Shaders/phong.frag";
 
 void CalcAverageNormals(unsigned int* indices, unsigned int indiceCount,
     GLfloat* vertices, unsigned int verticesCount,
@@ -102,9 +105,9 @@ void CalcAverageNormals(unsigned int* indices, unsigned int indiceCount,
         glm::vec3 vec(vertices[nOffset], vertices[nOffset + 1], vertices[nOffset + 2]);
         vec = glm::normalize(vec);
 
-        vertices[nOffset] = vec.x;
-        vertices[nOffset + 1] = vec.y;
-        vertices[nOffset + 2] = vec.z;
+        vertices[nOffset] = -vec.x;
+        vertices[nOffset + 1] = -vec.y;
+        vertices[nOffset + 2] = -vec.z;
     }
 }
 
@@ -133,10 +136,10 @@ void CreateObjects()
     };
 
     GLfloat floorVertices[] = {
-       -10.0f, 0.0f, -10.0f,  0.0f,  0.0f,  0.0f, -1.0f, 0.0f,
-        10.0f, 0.0f, -10.0f,  10.0f, 0.0f,  0.0f, -1.0f, 0.0f,
-       -10.0f, 0.0f,  10.0f,  0.0f,  10.0f, 0.0f, -1.0f, 0.0f,
-        10.0f, 0.0f,  10.0f,  10.0f, 10.0f, 0.0f, -1.0f, 0.0f
+       -10.0f, 0.0f, -10.0f,  0.0f,  0.0f,  0.0f, 1.0f, 0.0f,
+        10.0f, 0.0f, -10.0f,  10.0f, 0.0f,  0.0f, 1.0f, 0.0f,
+       -10.0f, 0.0f,  10.0f,  0.0f,  10.0f, 0.0f, 1.0f, 0.0f,
+        10.0f, 0.0f,  10.0f,  10.0f, 10.0f, 0.0f, 1.0f, 0.0f
     };
 
     CalcAverageNormals(indices, ArraySize(indices), vertices, ArraySize(vertices), 8, 5);
@@ -169,39 +172,42 @@ int main()
     camera = Camera(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), 0.0f, -90.0f, 2.0f, 0.1f);
 
     brickTexture = Texture("Textures/brick.png");
-    brickTexture.LoadTexture();
+    brickTexture.LoadTexture(GL_RGBA);
 
     dirtTexture = Texture("Textures/dirt.png");
-    dirtTexture.LoadTexture();
+    dirtTexture.LoadTexture(GL_RGBA);
 
     plainTexture = Texture("Textures/plain.png");
-    plainTexture.LoadTexture();
+    plainTexture.LoadTexture(GL_RGBA);
 
     shinyMaterial = Material(4.0f, 256);
     dullMaterial = Material(0.3f, 4);
 
+    house = Model();
+    house.LoadModel("Models/indoor plant_02.obj");
+
     mainLight = DirectionalLight(
         1.0f, 1.0f, 1.0f,
-        0.2f, 0.2f,
+        0.4f, 0.6f,
         0.0f, 0.0f, -1.0f);
 
     unsigned int pointLightCount = 0;
 
     pointLights[0] = PointLight(
         0.0f, 0.0f, 1.0f,
-        0.0f, 0.1f,
+        0.0f, 0.8f,
         0.0f, 0.0f, 0.0f,
         0.3f, 0.2f, 0.1f);
 
-    //pointLightCount++;
+    pointLightCount++;
 
     pointLights[1] = PointLight(
         0.0f, 1.0f, 0.0f,
-        0.0f, 0.1f,
+        0.0f, 0.8f,
         -4.0f, 2.0f, 0.0f,
         0.3f, 0.1f, 0.1f);
 
-    //pointLightCount++;
+    pointLightCount++;
 
     unsigned int spotLightCount = 0;
     spotLights[0] = SpotLight(
@@ -290,8 +296,16 @@ int main()
 
         glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
         dirtTexture.UseTexture();
-        shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+        dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
         meshList[2]->RenderMesh();
+
+        // House
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
+        model = glm::scale(model, glm::vec3(0.1f, 0.1, 0.1f));
+        glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+        shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+        house.RenderModel();
 
         glUseProgram(0); // Unbind the shader
 
