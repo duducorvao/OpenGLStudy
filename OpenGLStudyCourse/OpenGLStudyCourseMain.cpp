@@ -23,6 +23,7 @@
 #include "Material.h"
 #include "DirectionalLight.h"
 #include "PointLight.h"
+#include "SpotLight.h"
 
 #define ArraySize(x) sizeof(x) / sizeof(x[0])
 
@@ -42,6 +43,7 @@ Material dullMaterial;
 
 DirectionalLight mainLight;
 PointLight pointLights[MAX_POINT_LIGHTS];
+SpotLight spotLights[MAX_SPOT_LIGHTS];
 
 GLfloat deltaTime = 0.0f;
 GLfloat lastTime = 0.0f;
@@ -180,26 +182,45 @@ int main()
 
     mainLight = DirectionalLight(
         1.0f, 1.0f, 1.0f,
-        0.0f, 0.0f,
+        0.2f, 0.2f,
         0.0f, 0.0f, -1.0f);
 
     unsigned int pointLightCount = 0;
 
     pointLights[0] = PointLight(
         0.0f, 0.0f, 1.0f,
-        0.0f, 1.0f,
+        0.0f, 0.1f,
         0.0f, 0.0f, 0.0f,
         0.3f, 0.2f, 0.1f);
 
-    pointLightCount++;
+    //pointLightCount++;
 
     pointLights[1] = PointLight(
         0.0f, 1.0f, 0.0f,
-        0.0f, 1.0f,
+        0.0f, 0.1f,
         -4.0f, 2.0f, 0.0f,
         0.3f, 0.1f, 0.1f);
 
-    pointLightCount++;
+    //pointLightCount++;
+
+    unsigned int spotLightCount = 0;
+    spotLights[0] = SpotLight(
+        1.0f, 1.0f, 1.0f,
+        0.0f, 2.0f,
+        0.0f, 0.0f, 0.0f,
+        0.0f, -1.0f, 0.0f,
+        1.0f, 0.0f, 0.1f,
+        20.0f);
+    spotLightCount++;
+
+    spotLights[1] = SpotLight(
+        1.0f, 1.0f, 1.0f,
+        0.0f, 1.0f,
+        0.0f, -1.5f, 0.0f,
+        -100.0f, -1.0f, 0.0f,
+        1.0f, 0.0f, 0.0f,
+        20.0f);
+    spotLightCount++;
 
     GLuint uniformProjection = 0, uniformModel = 0,
         uniformView = 0, uniformEyePosition = 0,
@@ -232,8 +253,11 @@ int main()
         uniformSpecularIntensity = shaderList[0]->GetSpecularIntensityLocation();
         uniformShininess = shaderList[0]->GetShininessLocation();
 
+        spotLights[0].SetFlash(camera.GetCameraPosition(), camera.GetCameraDirection());
+
         shaderList[0]->SetDirectionalLight(&mainLight);
         shaderList[0]->SetPointLights(pointLights, pointLightCount);
+        shaderList[0]->SetSpotLights(spotLights, spotLightCount);
 
         // Updates the uniform with id "uniformProjection" with the value "projection"
         glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projection));
@@ -265,7 +289,7 @@ int main()
         model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
 
         glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-        plainTexture.UseTexture();
+        dirtTexture.UseTexture();
         shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
         meshList[2]->RenderMesh();
 

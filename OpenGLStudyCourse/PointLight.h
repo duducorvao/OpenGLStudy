@@ -12,9 +12,9 @@ public:
 
 	void UseLight(GLuint ambientIntensityLocation, GLuint ambientColorLocation,
 		GLuint diffuseIntensityLocation,GLuint positionLocation,
-		GLfloat constantLocation, GLfloat linearLocation, GLfloat exponentLocation);
+		GLuint constantLocation, GLuint linearLocation, GLuint exponentLocation);
 
-private:
+protected:
 	glm::vec3 position;
 
 	// Attenuation values for: ax^2 + bx + c
