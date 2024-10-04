@@ -12,7 +12,8 @@ SpotLight::~SpotLight()
 }
 
 SpotLight::SpotLight(
-	GLfloat red, GLfloat green, GLfloat blue, GLfloat aIntensity, GLfloat dIntensity,
+	GLfloat red, GLfloat green, GLfloat blue, 
+	GLfloat aIntensity, GLfloat dIntensity,
 	GLfloat xPos, GLfloat yPos, GLfloat zPos,
 	GLfloat xDir, GLfloat yDir, GLfloat zDir,
 	GLfloat con, GLfloat lin, GLfloat exp,

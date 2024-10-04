@@ -4,6 +4,7 @@ in vec4 vCol;
 in vec2 TexCoord;
 in vec3 Normal;
 in vec3 FragPos;
+in vec4 DirectionalLightSpacePos;
 
 out vec4 color;
 
@@ -52,15 +53,30 @@ uniform DirectionalLight directionalLight;
 uniform PointLight pointLights[MAX_POINT_LIGHTS];
 uniform SpotLight spotLights[MAX_SPOT_LIGHTS];
 
-uniform sampler2D tex;
+uniform sampler2D theTexture; // GL_TEXTURE0
+uniform sampler2D directionalShadowMap; // GL_TEXTURE1
 uniform Material material;
 uniform vec3 eyePosition; // Camera Position
 
-vec4 CalcLightByDirection(Light light, vec3 direction)
+float CalcDirectionalShadowFactor(DirectionalLight light)
+{
+	vec3 projCoords = DirectionalLightSpacePos.xyz / DirectionalLightSpacePos.w; // Normalized device coordinates (-1 1)
+	projCoords = (projCoords * 0.5) + 0.5; // Normalizing between 0 - 1
+	
+	float closestDepth = texture(directionalShadowMap, projCoords.xy).r; // Closest position to the light position (at the moment)
+	float currentDepth = projCoords.z;
+	
+	// 0 is close. 1 is far.                  shadow : no shadow
+	float shadow = currentDepth < closestDepth ? 1.0 : 0.0;
+	
+	return shadow;
+}
+
+vec4 CalcLightByDirection(Light light, vec3 direction, float shadowFactor)
 {
 	vec4 ambientColor = vec4(light.color, 1.0f) * light.ambientIntensity;
 	
-	float diffuseFactor = max(dot(normalize(Normal), -normalize(direction)), 0.0f);
+	float diffuseFactor = max(dot(normalize(Normal), normalize(direction)), 0.0f);
 	vec4 diffuseColor = vec4(light.color, 1.0f) * light.diffuseIntensity * diffuseFactor;
 	
 	vec4 specularColor = vec4(0, 0, 0, 0);
@@ -78,12 +94,13 @@ vec4 CalcLightByDirection(Light light, vec3 direction)
 		}
 	}
 	
-    return (ambientColor + diffuseColor + specularColor);
+    return (ambientColor + (1.0 - shadowFactor) * (diffuseColor + specularColor));
 }
 
 vec4 CalcDirectionalLight()
 {
-	return CalcLightByDirection(directionalLight.base, directionalLight.direction);
+	float shadowFactor = CalcDirectionalShadowFactor(directionalLight);
+	return CalcLightByDirection(directionalLight.base, directionalLight.direction, shadowFactor);
 }
 
 vec4 CalcPointLight(PointLight pLight)
@@ -92,7 +109,7 @@ vec4 CalcPointLight(PointLight pLight)
 		float distance = length(direction);
 		direction = normalize(direction);
 		
-		vec4 color = CalcLightByDirection(pLight.base, direction);
+		vec4 color = CalcLightByDirection(pLight.base, direction, 0.0f);
 		
 		// Quadratic equation
 		float attenuation = pLight.exponent * distance * distance + 
@@ -146,5 +163,20 @@ void main()
 	vec4 finalColor = CalcDirectionalLight();
 	finalColor += CalcPointLights();
 	finalColor += CalcSpotLights();
-    color = texture(tex, TexCoord) * finalColor;
+    color = texture(theTexture, TexCoord) * finalColor;
+	
+	// float shadowFactor = CalcDirectionalShadowFactor(directionalLight);
+	// color = vec4(shadowFactor, shadowFactor, shadowFactor, 1.0f);
+
+	// vec3 projCoords = DirectionalLightSpacePos.xyz / DirectionalLightSpacePos.w; // Normalized device coordinates (-1 1)
+	// projCoords = (projCoords * 0.5) + 0.5; // Normalizing between 0 - 1
+	
+	// vec4 shadowMap = texture(directionalShadowMap, projCoords.xy); // Closest position to the light position (at the moment)
+	// float camDistMap = projCoords.z;
+
+	// color = vec4(1.0 - shadowMap.xyz, 1.0);
+	// //color = vec4(vec3(camDistMap), 1.0);
+
+	// vec3 projCoords = DirectionalLightSpacePos.xyz / DirectionalLightSpacePos.w;
+	// color = vec4(vec3(projCoords), 1.0f);
 }

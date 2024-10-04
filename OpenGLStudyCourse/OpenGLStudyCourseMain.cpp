@@ -33,6 +33,8 @@ const float toRadians = 3.14159265f / 180.0f;
 GLWindow mainWindow;
 std::vector<Mesh*> meshList;
 std::vector<Shader*> shaderList;
+Shader directionalShadowShader;
+
 Camera camera;
 
 Texture brickTexture;
@@ -42,11 +44,14 @@ Texture plainTexture;
 Material shinyMaterial;
 Material dullMaterial;
 
-Model house;
+Model plant;
 
 DirectionalLight mainLight;
 PointLight pointLights[MAX_POINT_LIGHTS];
 SpotLight spotLights[MAX_SPOT_LIGHTS];
+
+unsigned int pointLightCount = 0;
+unsigned int spotLightCount = 0;
 
 GLfloat deltaTime = 0.0f;
 GLfloat lastTime = 0.0f;
@@ -56,6 +61,11 @@ static const char* vShader = "Shaders/phong.vert";
 
 // Fragment Shader
 static const char* fShader = "Shaders/phong.frag";
+
+// Uniforms
+GLuint uniformProjection = 0, uniformModel = 0,
+uniformView = 0, uniformEyePosition = 0,
+uniformSpecularIntensity = 0, uniformShininess = 0;
 
 void CalcAverageNormals(unsigned int* indices, unsigned int indiceCount,
     GLfloat* vertices, unsigned int verticesCount,
@@ -105,9 +115,9 @@ void CalcAverageNormals(unsigned int* indices, unsigned int indiceCount,
         glm::vec3 vec(vertices[nOffset], vertices[nOffset + 1], vertices[nOffset + 2]);
         vec = glm::normalize(vec);
 
-        vertices[nOffset] = -vec.x;
-        vertices[nOffset + 1] = -vec.y;
-        vertices[nOffset + 2] = -vec.z;
+        vertices[nOffset] = vec.x;
+        vertices[nOffset + 1] = vec.y;
+        vertices[nOffset + 2] = vec.z;
     }
 }
 
@@ -136,10 +146,10 @@ void CreateObjects()
     };
 
     GLfloat floorVertices[] = {
-       -10.0f, 0.0f, -10.0f,  0.0f,  0.0f,  0.0f, 1.0f, 0.0f,
-        10.0f, 0.0f, -10.0f,  10.0f, 0.0f,  0.0f, 1.0f, 0.0f,
-       -10.0f, 0.0f,  10.0f,  0.0f,  10.0f, 0.0f, 1.0f, 0.0f,
-        10.0f, 0.0f,  10.0f,  10.0f, 10.0f, 0.0f, 1.0f, 0.0f
+       -10.0f, 0.0f, -10.0f,  0.0f,  0.0f,  0.0f, -1.0f, 0.0f,
+        10.0f, 0.0f, -10.0f,  10.0f, 0.0f,  0.0f, -1.0f, 0.0f,
+       -10.0f, 0.0f,  10.0f,  0.0f,  10.0f, 0.0f, -1.0f, 0.0f,
+        10.0f, 0.0f,  10.0f,  10.0f, 10.0f, 0.0f, -1.0f, 0.0f
     };
 
     CalcAverageNormals(indices, ArraySize(indices), vertices, ArraySize(vertices), 8, 5);
@@ -159,6 +169,104 @@ void CreateShaders()
     Shader* shader1 = new Shader();
     shader1->CreateFromFiles(vShader, fShader);
     shaderList.push_back(shader1);
+
+    directionalShadowShader = Shader();
+    directionalShadowShader.CreateFromFiles("Shaders/directional_shadow_map.vert", "Shaders/directional_shadow_map.frag");
+}
+
+void RenderScene()
+{
+    // Triangle 1
+    glm::mat4 model = glm::mat4(1.0f);
+
+    model = glm::translate(model, glm::vec3(0.0f, 1.0f, -2.5f));
+
+    // Updates the uniform with id "uniformModel" with the value "model"
+    glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+    brickTexture.UseTexture();
+    shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+    meshList[0]->RenderMesh();
+
+    // Triangle 2
+    model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(0.0f, -1.0f, -2.5f));
+
+    glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+    dirtTexture.UseTexture();
+    dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+    meshList[1]->RenderMesh();
+
+    // Floor 1
+    model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
+
+    glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+    dirtTexture.UseTexture();
+    shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+    meshList[2]->RenderMesh();
+
+    // Plant
+    model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
+    model = glm::scale(model, glm::vec3(0.1f, 0.1, 0.1f));
+    glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+    shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+    plant.RenderModel();
+}
+
+void DirectionalShadowMapPass(DirectionalLight* light)
+{
+    directionalShadowShader.UseShader();
+
+    glViewport(0, 0, light->GetShadowMap()->GetShadowWidth(), light->GetShadowMap()->GetShadowHeight());
+
+    light->GetShadowMap()->Write();
+    glClear(GL_DEPTH_BUFFER_BIT);
+
+    uniformModel = directionalShadowShader.GetModelLocation();
+    directionalShadowShader.SetDirectionalLightTransform(light->CalculateLightTransform());
+
+    RenderScene();
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
+{
+    shaderList[0]->UseShader();
+
+    uniformModel = shaderList[0]->GetModelLocation();
+    uniformProjection = shaderList[0]->GetProjectionLocation();
+    uniformView = shaderList[0]->GetViewLocation();
+    uniformEyePosition = shaderList[0]->GetEyePositionLocation();
+    uniformSpecularIntensity = shaderList[0]->GetSpecularIntensityLocation();
+    uniformShininess = shaderList[0]->GetShininessLocation();
+
+    glViewport(0, 0, 1366, 768); // Maybe create a "SetViewPort" in Window class to handle this better;
+
+    // Clear window
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // Updates the uniform with id "uniformProjection" with the value "projection"
+    glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+    glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(viewMatrix));
+    glUniform3f(uniformEyePosition, camera.GetCameraPosition().x, camera.GetCameraPosition().y, camera.GetCameraPosition().z);
+
+    // Passing values to shaders' uniforms
+    shaderList[0]->SetDirectionalLight(&mainLight);
+    shaderList[0]->SetPointLights(pointLights, pointLightCount);
+    shaderList[0]->SetSpotLights(spotLights, spotLightCount);
+    shaderList[0]->SetDirectionalLightTransform(mainLight.CalculateLightTransform());
+
+    // Bind our shadow map to GL_TEXTURE1 since GL_TEXTURE0 is bound to the mesh's texture.
+    mainLight.GetShadowMap()->Read(GL_TEXTURE1);
+    shaderList[0]->SetTexture(0);
+    shaderList[0]->SetDirectionalShadowMap(1);
+
+    spotLights[0].SetFlash(camera.GetCameraPosition(), camera.GetCameraDirection());
+
+    RenderScene();
 }
 
 int main()
@@ -183,15 +291,14 @@ int main()
     shinyMaterial = Material(4.0f, 256);
     dullMaterial = Material(0.3f, 4);
 
-    house = Model();
-    house.LoadModel("Models/indoor plant_02.obj");
+    plant = Model();
+    plant.LoadModel("Models/indoor plant_02.obj");
 
     mainLight = DirectionalLight(
+        1024, 1024,
         1.0f, 1.0f, 1.0f,
-        0.4f, 0.6f,
-        0.0f, 0.0f, -1.0f);
-
-    unsigned int pointLightCount = 0;
+        0.1f, 0.3f,
+        0.0f, 5.0f, 5.0f);
 
     pointLights[0] = PointLight(
         0.0f, 0.0f, 1.0f,
@@ -209,7 +316,6 @@ int main()
 
     pointLightCount++;
 
-    unsigned int spotLightCount = 0;
     spotLights[0] = SpotLight(
         1.0f, 1.0f, 1.0f,
         0.0f, 2.0f,
@@ -217,6 +323,7 @@ int main()
         0.0f, -1.0f, 0.0f,
         1.0f, 0.0f, 0.1f,
         20.0f);
+
     spotLightCount++;
 
     spotLights[1] = SpotLight(
@@ -226,11 +333,8 @@ int main()
         -100.0f, -1.0f, 0.0f,
         1.0f, 0.0f, 0.0f,
         20.0f);
-    spotLightCount++;
 
-    GLuint uniformProjection = 0, uniformModel = 0,
-        uniformView = 0, uniformEyePosition = 0,
-        uniformSpecularIntensity = 0, uniformShininess = 0;
+    spotLightCount++;
 
     glm::mat4 projection = glm::perspective(45.0f, mainWindow.GetBufferWidth() / mainWindow.GetBufferHeight(), 0.1f, 100.0f);
 
@@ -247,66 +351,10 @@ int main()
         camera.KeyControl(mainWindow.GetKeys(), deltaTime);
         camera.MouseControl(mainWindow.GetXChange(), mainWindow.GetYChange());
 
-        // Clear window
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        shaderList[0]->UseShader();
-        uniformModel = shaderList[0]->GetModelLocation();
-        uniformProjection = shaderList[0]->GetProjectionLocation();
-        uniformView = shaderList[0]->GetViewLocation();
-        uniformEyePosition = shaderList[0]->GetEyePositionLocation();
-        uniformSpecularIntensity = shaderList[0]->GetSpecularIntensityLocation();
-        uniformShininess = shaderList[0]->GetShininessLocation();
-
-        spotLights[0].SetFlash(camera.GetCameraPosition(), camera.GetCameraDirection());
-
-        shaderList[0]->SetDirectionalLight(&mainLight);
-        shaderList[0]->SetPointLights(pointLights, pointLightCount);
-        shaderList[0]->SetSpotLights(spotLights, spotLightCount);
-
-        // Updates the uniform with id "uniformProjection" with the value "projection"
-        glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projection));
-        glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(camera.CalculateViewMatrix()));
-        glUniform3f(uniformEyePosition, camera.GetCameraPosition().x, camera.GetCameraPosition().y, camera.GetCameraPosition().z);
-
-        // Triangle 1
-        glm::mat4 model = glm::mat4(1.0f);
-
-        model = glm::translate(model, glm::vec3(0.0f, 1.0f, -2.5f));
-
-        // Updates the uniform with id "uniformModel" with the value "model"
-        glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));     
-        brickTexture.UseTexture();
-        shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-        meshList[0]->RenderMesh();
-
-        // Triangle 2
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f, -1.0f, -2.5f));
-
-        glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-        dirtTexture.UseTexture();
-        dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-        meshList[1]->RenderMesh();
-
-        // Floor 1
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
-
-        glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-        dirtTexture.UseTexture();
-        dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-        meshList[2]->RenderMesh();
-
-        // House
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
-        model = glm::scale(model, glm::vec3(0.1f, 0.1, 0.1f));
-        glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-        shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-        house.RenderModel();
-
+        // Render the depth buffer to a texture using the main light
+        DirectionalShadowMapPass(&mainLight);
+        RenderPass(projection, camera.CalculateViewMatrix());
+        
         glUseProgram(0); // Unbind the shader
 
         mainWindow.SwapBuffers();
