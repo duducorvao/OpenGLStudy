@@ -45,6 +45,7 @@ Material shinyMaterial;
 Material dullMaterial;
 
 Model plant;
+GLfloat plantAngle;
 
 DirectionalLight mainLight;
 PointLight pointLights[MAX_POINT_LIGHTS];
@@ -206,9 +207,16 @@ void RenderScene()
     meshList[2]->RenderMesh();
 
     // Plant
+    plantAngle += 0.1f;
+    if (plantAngle > 360.0f)
+    {
+        plantAngle = 0.1f;
+    }
+
     model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(0.1f, 0.1, 0.1f));
+    model = glm::rotate(model, plantAngle * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::translate(model, glm::vec3(2.0f + cos(plantAngle * 0.01f), -2.0f, 2.0f + sin(plantAngle * 0.01f)));
+    model = glm::scale(model, glm::vec3(0.3f, 0.3f, 0.3f));
     glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
     shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
     plant.RenderModel();
@@ -222,11 +230,12 @@ void DirectionalShadowMapPass(DirectionalLight* light)
 
     light->GetShadowMap()->Write();
     glClear(GL_DEPTH_BUFFER_BIT);
-
     uniformModel = directionalShadowShader.GetModelLocation();
     directionalShadowShader.SetDirectionalLightTransform(light->CalculateLightTransform());
 
+    glCullFace(GL_FRONT);
     RenderScene();
+    glCullFace(GL_BACK);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -245,7 +254,7 @@ void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
     glViewport(0, 0, 1366, 768); // Maybe create a "SetViewPort" in Window class to handle this better;
 
     // Clear window
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Updates the uniform with id "uniformProjection" with the value "projection"
@@ -264,7 +273,7 @@ void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
     shaderList[0]->SetTexture(0);
     shaderList[0]->SetDirectionalShadowMap(1);
 
-    spotLights[0].SetFlash(camera.GetCameraPosition(), camera.GetCameraDirection());
+    //spotLights[0].SetFlash(camera.GetCameraPosition(), camera.GetCameraDirection());
 
     RenderScene();
 }
@@ -295,46 +304,46 @@ int main()
     plant.LoadModel("Models/indoor plant_02.obj");
 
     mainLight = DirectionalLight(
-        1024, 1024,
+        2048, 2048,
         1.0f, 1.0f, 1.0f,
         0.1f, 0.3f,
-        0.0f, 5.0f, 5.0f);
+        0.0f, -15.0f, -10.0f);
 
-    pointLights[0] = PointLight(
+    /*pointLights[0] = PointLight(
         0.0f, 0.0f, 1.0f,
         0.0f, 0.8f,
         0.0f, 0.0f, 0.0f,
-        0.3f, 0.2f, 0.1f);
+        0.3f, 0.2f, 0.1f);*/
 
-    pointLightCount++;
+    //pointLightCount++;
 
-    pointLights[1] = PointLight(
+    /*pointLights[1] = PointLight(
         0.0f, 1.0f, 0.0f,
         0.0f, 0.8f,
         -4.0f, 2.0f, 0.0f,
-        0.3f, 0.1f, 0.1f);
+        0.3f, 0.1f, 0.1f);*/
 
-    pointLightCount++;
+    //pointLightCount++;
 
-    spotLights[0] = SpotLight(
+    /*spotLights[0] = SpotLight(
         1.0f, 1.0f, 1.0f,
         0.0f, 2.0f,
         0.0f, 0.0f, 0.0f,
         0.0f, -1.0f, 0.0f,
         1.0f, 0.0f, 0.1f,
-        20.0f);
+        20.0f);*/
 
-    spotLightCount++;
+    //spotLightCount++;
 
-    spotLights[1] = SpotLight(
+    /*spotLights[1] = SpotLight(
         1.0f, 1.0f, 1.0f,
         0.0f, 1.0f,
         0.0f, -1.5f, 0.0f,
         -100.0f, -1.0f, 0.0f,
         1.0f, 0.0f, 0.0f,
-        20.0f);
+        20.0f);*/
 
-    spotLightCount++;
+    //spotLightCount++;
 
     glm::mat4 projection = glm::perspective(45.0f, mainWindow.GetBufferWidth() / mainWindow.GetBufferHeight(), 0.1f, 100.0f);
 

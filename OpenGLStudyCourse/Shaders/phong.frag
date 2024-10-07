@@ -66,9 +66,33 @@ float CalcDirectionalShadowFactor(DirectionalLight light)
 	float closestDepth = texture(directionalShadowMap, projCoords.xy).r; // Closest position to the light position (at the moment)
 	float currentDepth = projCoords.z;
 	
-	// 0 is close. 1 is far.                  shadow : no shadow
-	float shadow = currentDepth < closestDepth ? 1.0 : 0.0;
+	// Fixing shadow acne
+	vec3 normal = normalize(Normal);
+	vec3 lightDir = normalize(light.direction);
+
+	float bias = max(0.005 * (1.0 - dot(normal, lightDir)), 0.001);
+
+	float shadow = 0.0;
+	vec2 texelSize = 1.0 / textureSize(directionalShadowMap, 0); // how big one "unit" of the shadow map is
+
+	// PCF (filter)
+	for (int x = -1; x <= 1; ++x)
+	{
+		for (int y = -1; y <= 1; ++y)
+		{
+			float pcfDepth = texture(directionalShadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
+			// 0 is close. 1 is far.                shadow : no shadow
+			shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
+		}
+	}
+
+	shadow /= 9.0;
 	
+	if(projCoords.z > 1.0)
+	{
+		shadow = 0.0;
+	}
+
 	return shadow;
 }
 
@@ -164,19 +188,4 @@ void main()
 	finalColor += CalcPointLights();
 	finalColor += CalcSpotLights();
     color = texture(theTexture, TexCoord) * finalColor;
-	
-	// float shadowFactor = CalcDirectionalShadowFactor(directionalLight);
-	// color = vec4(shadowFactor, shadowFactor, shadowFactor, 1.0f);
-
-	// vec3 projCoords = DirectionalLightSpacePos.xyz / DirectionalLightSpacePos.w; // Normalized device coordinates (-1 1)
-	// projCoords = (projCoords * 0.5) + 0.5; // Normalizing between 0 - 1
-	
-	// vec4 shadowMap = texture(directionalShadowMap, projCoords.xy); // Closest position to the light position (at the moment)
-	// float camDistMap = projCoords.z;
-
-	// color = vec4(1.0 - shadowMap.xyz, 1.0);
-	// //color = vec4(vec3(camDistMap), 1.0);
-
-	// vec3 projCoords = DirectionalLightSpacePos.xyz / DirectionalLightSpacePos.w;
-	// color = vec4(vec3(projCoords), 1.0f);
 }

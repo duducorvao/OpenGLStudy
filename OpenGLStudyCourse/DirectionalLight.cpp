@@ -4,7 +4,7 @@ DirectionalLight::DirectionalLight() :
 	Light(),
 	direction(glm::vec3(0.0f, -1.0f, 0.0f))
 {
-	lightProj = glm::ortho(-5.0f, 5.0f, -5.0f, 5.0f, 0.1f, 20.0f);
+	lightProj = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 0.1f, 100.0f);
 }
 
 DirectionalLight::~DirectionalLight() {}
@@ -18,7 +18,7 @@ DirectionalLight::DirectionalLight(
 	Light(shadowWidth, shadowHeight, red, green, blue, aIntensity, dIntensity),
 	direction(glm::vec3(xDir, yDir, zDir))
 {
-	lightProj = glm::ortho(-5.0f, 5.0f, -5.0f, 5.0f, 0.1f, 20.0f); 
+	lightProj = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 0.1f, 100.0f);
 }
 
 void DirectionalLight::UseLight(
@@ -37,5 +37,5 @@ void DirectionalLight::UseLight(
 glm::mat4 DirectionalLight::CalculateLightTransform()
 {
 	// The light transform is basically the projection and the view combined;
-	return lightProj * glm::lookAt(-direction, glm::vec3(0.0f, 0.0f, 0.0f),	glm::vec3(0.0f, 1.0f, 0.0f));
+	return lightProj * glm::lookAt(-direction, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 }
