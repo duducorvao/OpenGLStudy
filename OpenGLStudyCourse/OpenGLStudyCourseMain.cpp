@@ -25,6 +25,7 @@
 #include "PointLight.h"
 #include "SpotLight.h"
 #include "Model.h"
+#include "Skybox.h"
 
 #define ArraySize(x) sizeof(x) / sizeof(x[0])
 
@@ -54,6 +55,8 @@ SpotLight spotLights[MAX_SPOT_LIGHTS];
 
 unsigned int pointLightCount = 0;
 unsigned int spotLightCount = 0;
+
+Skybox* skybox;
 
 GLfloat deltaTime = 0.0f;
 GLfloat lastTime = 0.0f;
@@ -208,7 +211,7 @@ void RenderScene()
 
     glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
     dirtTexture.UseTexture();
-    shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+    dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
     meshList[2]->RenderMesh();
 
     // Plant
@@ -220,7 +223,7 @@ void RenderScene()
 
     model = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
-    //model = glm::rotate(model, plantAngle * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, plantAngle * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::scale(model, glm::vec3(0.3f, 0.3f, 0.3f));
     glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
     shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
@@ -274,6 +277,14 @@ void OmniShadowMapPass(PointLight* light)
 
 void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
 {
+    glViewport(0, 0, 1366, 768); // Maybe create a "SetViewPort" in Window class to handle this better;
+
+    // Clear window
+    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    skybox->DrawSkybox(viewMatrix, projectionMatrix);
+
     shaderList[0]->UseShader();
 
     uniformModel = shaderList[0]->GetModelLocation();
@@ -282,12 +293,6 @@ void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
     uniformEyePosition = shaderList[0]->GetEyePositionLocation();
     uniformSpecularIntensity = shaderList[0]->GetSpecularIntensityLocation();
     uniformShininess = shaderList[0]->GetShininessLocation();
-
-    glViewport(0, 0, 1366, 768); // Maybe create a "SetViewPort" in Window class to handle this better;
-
-    // Clear window
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Updates the uniform with id "uniformProjection" with the value "projection"
     glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
@@ -340,16 +345,16 @@ int main()
     mainLight = DirectionalLight(
         2048, 2048,
         1.0f, 1.0f, 1.0f,
-        0.0f, 0.1f,
-        0.0f, -15.0f, -10.0f);
+        0.3f, 0.8f,
+        8.0f, -25.0f, 10.0f);
 
     pointLights[0] = PointLight(
         1024, 1024,
         0.01f, 100.0f,
         0.0f, 0.0f, 1.0f,
-        0.0f, 1.0f,
-        1.0f, 2.0f, 0.0f,
-        0.3f, 0.1f, 0.1f);
+        0.0f, 3.0f,
+        4.0f, 3.0f, 0.0f,
+        0.3f, 0.2f, 0.1f);
 
     pointLightCount++;
 
@@ -357,9 +362,9 @@ int main()
         1024, 1024,
         0.01f, 100.0f,
         0.0f, 1.0f, 0.0f,
-        0.0f, 1.0f,
+        0.0f, 3.0f,
         -4.0f, 3.0f, 0.0f,
-        0.3f, 0.1f, 0.1f);
+        0.3f, 0.2f, 0.1f);
 
     pointLightCount++;
 
@@ -367,7 +372,7 @@ int main()
         1024, 1024,
         0.01f, 100.0f,
         1.0f, 1.0f, 1.0f,
-        0.0f, 2.0f,
+        0.0f, 1.0f,
         0.0f, 0.0f, 0.0f,
         0.0f, -1.0f, 0.0f,
         1.0f, 0.0f, 0.1f,
@@ -379,13 +384,24 @@ int main()
         1024, 1024,
         0.01f, 100.0f,
         1.0f, 1.0f, 1.0f,
-        0.0f, 1.0f,
+        0.0f, 10.0f,
         0.0f, -1.5f, 0.0f,
         -100.0f, -1.0f, 0.0f,
         1.0f, 0.0f, 0.0f,
         20.0f);
 
     spotLightCount++;
+
+    std::vector<std::string> skyboxFaces = {
+        "Textures/Skybox/px.png", // +X
+        "Textures/Skybox/nx.png", // -X
+        "Textures/Skybox/py.png", // +Y
+        "Textures/Skybox/ny.png", // -Y
+        "Textures/Skybox/pz.png", // +Z
+        "Textures/Skybox/nz.png", // -Z
+    };
+
+    skybox = new Skybox(skyboxFaces);
 
     glm::mat4 projection = glm::perspective(glm::radians(60.0f), mainWindow.GetBufferWidth() / mainWindow.GetBufferHeight(), 0.1f, 100.0f);
 

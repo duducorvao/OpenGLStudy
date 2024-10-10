@@ -20,7 +20,8 @@ Shader::Shader() :
     uniformLightMatrices(),
     uniformDirectionalLight(),
     uniformPointLight(),
-    uniformSpotLight()
+    uniformSpotLight(),
+    uniformOmniShadowMap()
 {}
 
 Shader::~Shader()
