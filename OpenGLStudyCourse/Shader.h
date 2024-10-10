@@ -23,6 +23,9 @@ public:
 
 	void CreateFromString(const char* vertexCode, const char* fragmentCode);
 	void CreateFromFiles(const char* vertexPath, const char* fragmentPath);
+	void CreateFromFiles(const char* vertexPath, const char* geometryPath, const char* fragmentPath);
+
+	void Validate();
 
 	std::string ReadFile(const char* filePath);
 
@@ -36,13 +39,18 @@ public:
 	GLuint GetSpecularIntensityLocation();
 	GLuint GetShininessLocation();
 	GLuint GetEyePositionLocation();
+	GLuint GetOmniLightPosLocation();
+	GLuint GetFarPlaneLocation();
 
 	void SetDirectionalLight(DirectionalLight* dLight);
-	void SetPointLights(PointLight* pLight, unsigned int lightCount);
-	void SetSpotLights(SpotLight* sLight, unsigned int lightCount);
+	void SetPointLights(PointLight* pLight, unsigned int lightCount, unsigned int initialTextureUnit, unsigned int offset);
+	void SetSpotLights(SpotLight* sLight, unsigned int lightCount, unsigned int initialTextureUnit, unsigned int offset);
 	void SetTexture(GLuint textureUnit);
 	void SetDirectionalShadowMap(GLuint textureUnit);
 	void SetDirectionalLightTransform(glm::mat4 lTransform);
+	void SetOmniLightPos(glm::vec3 lightPos);
+	void SetFarPlane(GLfloat farPlane);
+	void SetLightMatrices(std::vector<glm::mat4> lightMatrices);
 
 	void UseShader();
 	void ClearShader();
@@ -71,6 +79,11 @@ private:
 	// Shadow value
 	GLuint uniformDirectionalLightTransform;
 	GLuint uniformDirectionalShadowMap;
+
+	GLuint uniformOmniLightPos;
+	GLuint uniformFarPlane;
+
+	GLuint uniformLightMatrices[6];
 
 	struct {
 		GLuint uniformColor;
@@ -105,7 +118,14 @@ private:
 		GLuint uniformEdge;
 	} uniformSpotLight[MAX_SPOT_LIGHTS];
 
+	struct {
+		GLuint shadowMap;
+		GLuint farPlane;
+	} uniformOmniShadowMap[MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS];
+
+	void CompileProgram();
 	void CompileShader(const char* vertexCode, const char* fragmentCode);
+	void CompileShader(const char* vertexCode, const char* geometryCode, const char* fragmentCode);
 	void AddShader(GLuint program, const char* shaderCode, GLenum shaderType);
 
 };

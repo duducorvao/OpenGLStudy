@@ -48,10 +48,10 @@ bool ShadowMap::Init(GLuint width, GLuint height)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
 
-	glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, FBO);
 
 	// Describes how to render the framebuffer to the texture (shadowMap)
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowMap, 0);
+	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowMap, 0);
 
 	glDrawBuffer(GL_NONE);
 	glReadBuffer(GL_NONE);
@@ -63,15 +63,13 @@ bool ShadowMap::Init(GLuint width, GLuint height)
 		printf("Framebuffer error: %i\n", status);
 		return false;
 	}
-
-	glBindFramebuffer(GL_FRAMEBUFFER, 0); // Unbind
 		
 	return true;
 }
 
 void ShadowMap::Write()
 {
-	glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, FBO);
 }
 
 void ShadowMap::Read(GLenum textureUnit)
